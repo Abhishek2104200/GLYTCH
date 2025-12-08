@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+pandas
+langchain
+langchain-community
+chromadb
+openai
+twilio
+python-dotenv
+websockets
+pydantic
