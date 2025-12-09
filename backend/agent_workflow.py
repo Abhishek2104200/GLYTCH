@@ -1,59 +1,44 @@
-import time
-from backend.rag_engine import get_retriever
+from backend.rag_engine import run_rag_search
 from backend.ueba_guard import validate_action
 from backend.booking_manager import find_available_slot, book_slot
-from backend.voice_service import send_alert  # We will write this next
+from backend.voice_service import send_alert
 
 def run_agent_workflow(user_query, vehicle_data=None):
-    """
-    SOP Defined Workflow:
-    Input -> RAG -> Safety Check -> Slot Check -> Decision.
-    """
     print(f"🧠 Agent Workflow Triggered: {user_query}")
     
-    # 1. RAG: Consult the Manual
-    retriever = get_retriever()
-    docs = retriever.invoke(user_query)
-    manual_context = docs[0].page_content
+    # 1. RAG Search (Now checks the PDF)
+    rag_result = run_rag_search(user_query)
     
     response = {
-        "analysis": "Analyzing system parameters...",
+        "analysis": rag_result,
         "steps": [],
-        "booking_status": "Not required"
+        "booking_status": None
     }
 
-    # 2. Logic: If P0217 (Overheating) is detected
-    if "P0217" in user_query or "overheating" in user_query.lower():
-        response["analysis"] = "CRITICAL: Engine Overtemp (P0217) detected. Immediate action required."
+    # 2. Logic: Check if the RAG result discusses a Fault Code
+    # We look for keywords in the retrieved manual text
+    critical_keywords = ["P0217", "Overheating", "High Input", "Circuit Malfunction"]
+    
+    is_critical = any(k.lower() in rag_result.lower() for k in critical_keywords)
+
+    if is_critical:
         response["steps"] = [
             "1. STOP the vehicle immediately.",
-            "2. Do not open the radiator cap.",
-            "3. Allow engine to cool for 15 minutes."
+            "2. Check coolant levels.",
+            "3. Do not open radiator cap while hot."
         ]
         
-        # 3. Safety Layer (UEBA)
-        # We simulate vehicle data if not provided
+        # 3. Safety Layer
         current_data = vehicle_data if vehicle_data else {"temp": 115} 
         is_safe, safety_msg = validate_action("book_service", current_data)
         
         if is_safe:
-            # 4. Booking Check (Find a slot)
             slot = find_available_slot()
             if slot:
-                # 5. Voice Action (Trigger the call)
-                alert_message = f"Hello, your car is overheating. I have found a service slot at {slot['Time']}. booking it now."
-                send_alert(alert_message)
-                
-                # Auto-book simulation
-                # In a real scenario, we might ask for confirmation, but for the demo, we show availability.
                 response["booking_status"] = f"Slot found at {slot['Time']}. Auto-booking initiated."
             else:
-                response["booking_status"] = "No service slots available immediately."
+                response["booking_status"] = "No service slots available."
         else:
-            response["booking_status"] = f"Booking blocked by Safety Layer: {safety_msg}"
+            response["booking_status"] = f"Booking blocked: {safety_msg}"
 
-    else:
-        # Fallback for normal queries
-        response["analysis"] = "System Normal. " + manual_context[:100] + "..."
-        
     return response

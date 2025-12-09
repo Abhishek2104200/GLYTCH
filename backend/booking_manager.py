@@ -1,8 +1,9 @@
 import pandas as pd
 import os
 
-# --- FIX: Go up one level (..) to escape 'backend' folder, then into 'data' ---
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# --- FIX: Look inside the CURRENT folder (backend), not the parent ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__)) 
 CSV_PATH = os.path.join(BASE_DIR, "data", "service_slots.csv")
 
 def load_data():

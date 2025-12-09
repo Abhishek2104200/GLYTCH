@@ -74,7 +74,8 @@ async def websocket_endpoint(websocket: WebSocket):
     df = pd.read_csv(csv_path)
     
     # 1. INITIALIZE FLAG HERE (Outside the loop)
-    alert_triggered = False  # <--- NEW: Keeps track of whether we already booked
+    # We set this to False initially. Once it turns True, it STAYS True.
+    has_triggered_alert = False  
 
     try:
         # Loop through the CSV rows indefinitely (Simulation Loop)
@@ -96,7 +97,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 if dtc_val and str(dtc_val).strip() != "None":
                     
                     # 2. CHECK THE FLAG: Only book if we haven't done it yet
-                    if not alert_triggered:  # <--- NEW: Prevents repeating the call
+                    if not has_triggered_alert:  
                         print(f"⚠️ FAILURE TRIGGERED: {dtc_val}")
                         
                         # A. Send Voice Alert
@@ -107,7 +108,10 @@ async def websocket_endpoint(websocket: WebSocket):
                         slot = find_available_slot()
                         
                         if slot:
-                            veh_reg = "TN-01-GLYTCH"
+                            # --- CRITICAL FIX: Match the Frontend ID ---
+                            veh_reg = "TN-22-BJ-2730" 
+                            # -------------------------------------------
+                            
                             success = book_slot(slot['SlotID'], veh_reg)
                             
                             if success:
@@ -116,13 +120,9 @@ async def websocket_endpoint(websocket: WebSocket):
                         else:
                             print("❌ No slots available for auto-booking.")
                         
-                        # 3. LOCK THE FLAG: We have booked, so stop checking until error clears
-                        alert_triggered = True  # <--- NEW: Stops future loops from booking
+                        # 3. LOCK THE FLAG: Triggered once, never trigger again for this session
+                        has_triggered_alert = True  
                 
-                else:
-                    # 4. RESET THE FLAG: If error clears (dtc is None), we allow future bookings
-                    alert_triggered = False  # <--- NEW: Re-arms the system for the next DIFFERENT error
-
                 # --- [END] AUTO-BOOKING LOGIC ---
 
                 
