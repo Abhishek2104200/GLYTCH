@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import CarSchematic from '../components/CarHologram';
+import CarSchematic from '../components/CarSchematic';
 import { Activity, AlertTriangle, Thermometer } from 'lucide-react';
 import CarHologram from '../components/CarHologram';
 
@@ -40,7 +40,7 @@ const Dashboard = () => {
           </div>
           
           {/* The SVG Component */}
-          <CarHologram isCritical={isCritical} />
+          <CarSchematic isCritical={isCritical} />
 
           {isCritical && (
             <div className="absolute bottom-20 bg-red-600 text-white px-6 py-2 rounded font-bold animate-bounce shadow-lg">
