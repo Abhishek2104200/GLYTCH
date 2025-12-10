@@ -25,7 +25,7 @@ class UserQuery(BaseModel):
     query: str
     vehicle_data: dict = None
 
-# --- HTTP Endpoints (For the Chat/Agent) ---
+# --- HTTP Endpoints ---
 @app.get("/")
 def read_root():
     return {"status": "GLYTCH System Online", "version": "2.0.0"}
@@ -39,31 +39,56 @@ def analyze_vehicle(request: UserQuery):
     result = run_agent_workflow(request.query, request.vehicle_data)
     return result
 
-
 @app.get("/api/service-history/{reg_number}")
 def get_service_history(reg_number: str):
     """
-    SOP Requirement: Returns all slots for that car.
+    Returns all slots for that car.
     """
     history = get_history(reg_number)
     return history
 
-# --- WEBSOCKET (For the Live Dashboard)  ---
 @app.post("/api/voice-test")
 def trigger_manual_call():
     """
-    Allows the frontend 'Call Assist' button to trigger a voice alert manually.
+    Triggers a manual voice alert.
     """
     print("📞 Manual Voice Test Triggered")
-    success = send_alert("Hello. This is GLYTCH Assist. We detected a manual request for support. Connecting you now.")
+    success = send_alert("Hello. This is autosync Assist. We detected a manual request for support. Connecting you now.")
     return {"status": "calling", "success": success}
 
+# --- NEW ENDPOINT: MANUAL BOOKING (This was missing) ---
+@app.post("/api/book-manual")
+def manual_booking():
+    """
+    Triggered by the 'Book Service' button on the dashboard.
+    """
+    print("📅 Manual Booking Requested")
+    
+    # 1. Find a slot
+    slot = find_available_slot()
+    
+    if slot:
+        # 2. Book it for your specific User ID
+        veh_reg = "TN-22-BJ-2730"
+        success = book_slot(slot['SlotID'], veh_reg)
+        
+        if success:
+            print(f"✅ Manually Booked Slot {slot['SlotID']}")
+            return {
+                "status": "success", 
+                "message": f"Service Confirmed: {slot['Date']} at {slot['Time']}",
+                "slot": slot
+            }
+    
+    print("❌ Manual Booking Failed: No Slots")
+    return {"status": "failed", "message": "No available service slots found in the database."}
+
+# --- WEBSOCKET ---
 @app.websocket("/ws/simulation")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     print("🔌 WebSocket Connected: Frontend is listening...")
     
-    # Load the simulation data
     csv_path = os.path.join(os.path.dirname(__file__), "data", "obd_simulation.csv")
     
     if not os.path.exists(csv_path):
@@ -73,15 +98,12 @@ async def websocket_endpoint(websocket: WebSocket):
 
     df = pd.read_csv(csv_path)
     
-    # 1. INITIALIZE FLAG HERE (Outside the loop)
-    # We set this to False initially. Once it turns True, it STAYS True.
+    # Flag to ensure we don't spam the auto-booking
     has_triggered_alert = False  
 
     try:
-        # Loop through the CSV rows indefinitely (Simulation Loop)
         while True:
             for index, row in df.iterrows():
-                # 1. Prepare Data
                 dtc_val = row["DTC_CODE"] if pd.notna(row["DTC_CODE"]) else None
                 
                 data_point = {
@@ -92,44 +114,26 @@ async def websocket_endpoint(websocket: WebSocket):
                     "dtc": dtc_val
                 }
                 
-                # --- [START] AUTO-BOOKING LOGIC ---
-                # Check if there is a valid Error Code
+                # Auto-Booking Logic for Critical Faults
                 if dtc_val and str(dtc_val).strip() != "None":
-                    
-                    # 2. CHECK THE FLAG: Only book if we haven't done it yet
                     if not has_triggered_alert:  
                         print(f"⚠️ FAILURE TRIGGERED: {dtc_val}")
                         
-                        # A. Send Voice Alert
-                        error_msg = f"Critical fault {dtc_val} detected. Scheduling service."
-                        send_alert(error_msg) 
+                        # A. Voice Alert
+                        send_alert(f"Critical fault {dtc_val} detected. Scheduling service.") 
                         
-                        # B. Auto-Book Slot
+                        # B. Auto-Book
                         slot = find_available_slot()
-                        
                         if slot:
-                            # --- CRITICAL FIX: Match the Frontend ID ---
                             veh_reg = "TN-22-BJ-2730" 
-                            # -------------------------------------------
-                            
                             success = book_slot(slot['SlotID'], veh_reg)
-                            
                             if success:
-                                print(f"✅ Auto-Booked Slot {slot['SlotID']} for {veh_reg}")
+                                print(f"✅ Auto-Booked Slot {slot['SlotID']}")
                                 data_point["alert"] = f"Service Booked: {slot['Date']} {slot['Time']}"
-                        else:
-                            print("❌ No slots available for auto-booking.")
                         
-                        # 3. LOCK THE FLAG: Triggered once, never trigger again for this session
                         has_triggered_alert = True  
                 
-                # --- [END] AUTO-BOOKING LOGIC ---
-
-                
-                # Send to Frontend
                 await websocket.send_json(data_point)
-                
-                # Wait 1 second before sending the next row (Simulate real time)
                 await asyncio.sleep(1)
                 
     except WebSocketDisconnect:
