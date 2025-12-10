@@ -198,19 +198,4 @@ GLYTCH/
 └── README.md
 ```
 
------
-
-## 👥 Contributors
-
-A huge shoutout to the team who made this happen:
-
-  * **Abhishek.S.B** - Full Stack Integration, System Architect & 3D Implementation.
-  * **Khushwant** - Lead Data Scientist (AI/ML Models & Training).
-  * **Kalanidhiyan** - Frontend Developer (Visuals, 2D Schematics & UI).
-  * **Anish** - Backend Developer (Booking Logic & Database Management).
-  * **Sukhesh** - Research Lead (OBD-II Protocols & Documentation).
-
------
-
-
 
