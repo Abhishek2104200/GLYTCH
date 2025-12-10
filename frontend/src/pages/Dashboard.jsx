@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom'; // 1. Added Import
+import { useNavigate } from 'react-router-dom'; // 1. Added Navigation Hook
 import CarSchematic from '../components/CarSchematic';
-// SAFE IMPORTS ONLY
-import { Send, Phone, Wrench, AlertTriangle } from 'lucide-react';
+// 2. Added Activity icon for the new button
+import { Send, Phone, Wrench, AlertTriangle, Activity } from 'lucide-react';
 import axios from 'axios';
 import Car3D from '../components/Car3D';
 
 const Dashboard = () => {
-    const navigate = useNavigate(); // 2. Initialize Navigation
+    const navigate = useNavigate(); // Initialize Navigate
     const [vehicleData, setVehicleData] = useState({ rpm: 0, speed: 0, temp: 90, dtc: null });
     const [messages, setMessages] = useState([
         { sender: "ai", text: "Hello. I am GLYTCH AI. I am monitoring your vehicle telemetry in real-time. How can I assist you today?" }
@@ -125,28 +125,39 @@ const Dashboard = () => {
                         </div>
                     </div>
 
-                    {/* ACTION BUTTONS (2 Columns) */}
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* ACTION BUTTONS (Updated to 3 Columns to fit the new button) */}
+                    <div className="grid grid-cols-3 gap-4">
                         <button
                             onClick={handleCallAssist}
                             className="group bg-slate-800 hover:bg-indigo-600 border border-slate-700 hover:border-indigo-400 p-4 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg"
                         >
                             <Phone className="w-5 h-5 text-indigo-400 group-hover:text-white" />
                             <div className="text-left">
-                                <div className="text-[10px] text-slate-400 group-hover:text-indigo-100">PRIORITY SUPPORT</div>
+                                <div className="text-[10px] text-slate-400 group-hover:text-indigo-100">PRIORITY</div>
                                 <div className="font-bold text-sm text-slate-200 group-hover:text-white">Call Assist</div>
                             </div>
                         </button>
 
-                        {/* 3. Updated Button with onClick */}
                         <button
-                            onClick={() => navigate('/booking')}
+                            onClick={() => navigate('/booking')} // Updated to go to Portal
                             className="group bg-slate-800 hover:bg-amber-600 border border-slate-700 hover:border-amber-400 p-4 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg"
                         >
                             <Wrench className="w-5 h-5 text-amber-400 group-hover:text-white" />
                             <div className="text-left">
                                 <div className="text-[10px] text-slate-400 group-hover:text-amber-100">MAINTENANCE</div>
                                 <div className="font-bold text-sm text-slate-200 group-hover:text-white">Book Slot</div>
+                            </div>
+                        </button>
+
+                        {/* NEW BUTTON: PREDICT MAINTENANCE */}
+                        <button
+                            onClick={() => navigate('/predict')}
+                            className="group bg-slate-800 hover:bg-cyan-600 border border-slate-700 hover:border-cyan-400 p-4 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 shadow-lg"
+                        >
+                            <Activity className="w-5 h-5 text-cyan-400 group-hover:text-white" />
+                            <div className="text-left">
+                                <div className="text-[10px] text-slate-400 group-hover:text-cyan-100">AI ANALYSIS</div>
+                                <div className="font-bold text-sm text-slate-200 group-hover:text-white">Predict Maint.</div>
                             </div>
                         </button>
                     </div>
@@ -166,7 +177,7 @@ const Dashboard = () => {
                         </div>
 
                         {/* Chat Messages */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-800">
                             {messages.map((msg, idx) => (
                                 <div key={idx} className={`flex gap-3 ${msg.sender === 'user' ? 'flex-row-reverse' : ''}`}>
                                     {/* Avatar */}
