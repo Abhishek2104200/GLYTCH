@@ -43,7 +43,7 @@ def send_alert(message_text):
         twiml_instruction = (
             f'<Response>'
             f'<Pause length="1"/>'
-            f'<Say voice="alice">GLYTCH System Alert. {message_text}</Say>'
+            f'<Say voice="alice">autosync System Alert. {message_text}</Say>'
             f'<Pause length="1"/>'
             f'<Say voice="alice">Repeating: {message_text}</Say>'
             f'</Response>'

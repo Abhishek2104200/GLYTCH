@@ -84,6 +84,7 @@ def manual_booking():
     return {"status": "failed", "message": "No available service slots found in the database."}
 
 # --- WEBSOCKET ---
+# --- WEBSOCKET ---
 @app.websocket("/ws/simulation")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
@@ -97,9 +98,28 @@ async def websocket_endpoint(websocket: WebSocket):
         return
 
     df = pd.read_csv(csv_path)
-    
-    # Flag to ensure we don't spam the auto-booking
     has_triggered_alert = False  
+
+    # --- 1. DEFINE YOUR CODES HERE ---
+    # Add any codes you want the voice to recognize specifically.
+    FAULT_CODES = {
+        "P0217": {
+            "desc": "Engine Coolant Over Temperature Condition",
+            "advice": "Stop the vehicle immediately to prevent engine damage."
+        },
+        "P0300": {
+            "desc": "Random Multiple Cylinder Misfire Detected",
+            "advice": "Reduce speed and avoid heavy acceleration."
+        },
+        "P0115": {
+            "desc": "Engine Coolant Temperature Circuit Malfunction",
+            "advice": "Check coolant levels immediately."
+        },
+        "P0101": {
+            "desc": "Mass Air Flow Sensor Performance Problem",
+            "advice": "Engine performance may be reduced."
+        }
+    }
 
     try:
         while True:
@@ -114,15 +134,39 @@ async def websocket_endpoint(websocket: WebSocket):
                     "dtc": dtc_val
                 }
                 
-                # Auto-Booking Logic for Critical Faults
+                # --- AUTO-BOOKING & VOICE ALERT LOGIC ---
                 if dtc_val and str(dtc_val).strip() != "None":
-                    if not has_triggered_alert:  
+                    if not has_triggered_alert:
                         print(f"⚠️ FAILURE TRIGGERED: {dtc_val}")
                         
-                        # A. Voice Alert
-                        send_alert(f"Critical fault {dtc_val} detected. Scheduling service.") 
+                        # --- SMART LOOKUP ---
+                        # Check if we know this code
+                        if dtc_val in FAULT_CODES:
+                            fault_info = FAULT_CODES[dtc_val]
+                            fault_description = fault_info["desc"]
+                            advice = fault_info["advice"]
+                        else:
+                            # Fallback for unknown codes (reads the code itself)
+                            fault_description = "Critical Unidentified Fault"
+                            advice = f"Diagnostic code {dtc_val} requires manual inspection."
+
+                        # Spaced out vehicle number so the AI reads it clearly
+                        veh_voice_format = "T N 22, B J, 27 30"
+                        current_temp = int(row["0105_ECT"])
+
+                        # The Voice Script
+                        voice_msg = (
+                            f"Diagnostic Trouble Code {dtc_val} detected. "
+                            f"{fault_description}. "
+                            f"Current engine temperature is {current_temp} degrees celsius. "
+                            f"{advice} "
+                            f"We are initiating an emergency service booking for vehicle {veh_voice_format}."
+                        )
                         
-                        # B. Auto-Book
+                        # Send the detailed message
+                        send_alert(voice_msg) 
+                        
+                        # --- BOOKING LOGIC ---
                         slot = find_available_slot()
                         if slot:
                             veh_reg = "TN-22-BJ-2730" 
